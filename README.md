@@ -66,7 +66,9 @@ The cohort program spans 8 weeks and follows the schedule outlined below:
 | Week 5 (25 August - 1 Dec)   | Chapters 8 and 9        | P2SH and Blocks                       |
 | Week 6 (2 Dec - 8 Dec)   | Chapters 10 and 11        | Networking and SPV                           |
 | Week 7 (9 Dec - 15 Dec) | Chapter 12 and 13 | Bloom filter Segwit   |
-| Week 8 (16 Dec - 22 Dec) | Conclusion and Next Step |
+| Week 8 (16 Dec - 22 Dec) | Conclusion and Next Step | |
+
+
 The structure of the cohort program is designed for self-study. Each week, participants will be assigned to a group to receive questions related to the scheduled chapters.
 Participants are expected to study the material, prepare answers to their questions, and actively participate in the weekly group discussion sessions, where they will explain
 their answers to other participants.
