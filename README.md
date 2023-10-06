@@ -58,15 +58,15 @@ The cohort program spans 8 weeks and follows the schedule outlined below:
 
 | Week                             | PB Chapters            | Content                                                  |
 |----------------------------------|---------------------------|----------------------------------------------------------|
-| Week 0 (27 Oct)  | Introduction              | -                                                        |
-| Week 1 (28 Oct - 3 Nov)  | Chapters 1 and 2      | Finite Fields and Elliptic Curves  |
-| Week 2 (4 Nov - 10 Nov)  | Chapters 3            | Elliptic Curve Cryptography        |
-| Week 3 (11 Nov - 17 Nov)      | Chapters 4 and 5          | Serializations and Transactions                                           |
-| Week 4 (18 Nov - 24 Nov)    | Chapters 6 and 7          | Scripts and Transaction Validation |
-| Week 5 (25 August - 1 Dec)   | Chapters 8 and 9        | P2SH and Blocks                       |
-| Week 6 (2 Dec - 8 Dec)   | Chapters 10 and 11        | Networking and SPV                           |
-| Week 7 (9 Dec - 15 Dec) | Chapter 12 and 13 | Bloom filter Segwit   |
-| Week 8 (16 Dec - 22 Dec) | Conclusion and Next Step | |
+| Week 0 (20 Oct)  | Introduction              | -                                                        |
+| Week 1 (21 Oct - 27 Nov)  | Chapters 1 and 2       |  Finite Fields and Elliptic Curves  |
+| Week 2 (28 Oct - 3 Nov)  |  Chapters 3   |  Elliptic Curve Cryptography  |
+| Week 3 (4 Nov - 10 Nov)  |    Chapters 4 and 5          |    Serializations and Transactions   |
+| Week 4 (11 Nov - 17 Nov)      |   Chapters 6 and 7       |          Scripts and Transaction Validation                                  |
+| Week 5 (18 Nov - 24 Nov)    |     Chapters 8 and 9     | P2SH and Blocks  |
+| Week 6 (25 August - 1 Dec)   |     Chapters 10 and 11       |         Networking and SPV              |
+| Week 7 (2 Dec - 8 Dec)   |  Chapter 12 and 13    |            Bloom filter Segwit                 |
+| Week 8 (9 Dec - 15 Dec) |  Conclusion and Next Step |   |
 
 
 The structure of the cohort program is designed for self-study. Each week, participants will be assigned to a group to receive questions related to the scheduled chapters.
