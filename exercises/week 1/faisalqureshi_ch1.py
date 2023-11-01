@@ -1,8 +1,4 @@
-from random import randint
-from unittest import TestCase
 
-import hashlib
-import hmac
 
 print("****************************************************************")
 print("\033[31m Solutions for Excercises of Chapter 1. \033[0m")
