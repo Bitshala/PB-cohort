@@ -116,7 +116,3 @@ print(3*pow(24, prime-2, prime) % prime)
 print(pow(17, prime-4, prime))
 print(pow(4, prime-5, prime)*11 % prime)
 
-print("****************************************************************")
-print("\033[31m Solutions for Excercises of Chapter 2. \033[0m")
-print("****************************************************************")
-
