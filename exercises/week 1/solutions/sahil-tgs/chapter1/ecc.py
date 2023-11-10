@@ -1,12 +1,7 @@
 from unittest import TestCase
 
 
-
-
 class FieldElement:
-
-
-
 
     def __init__(self, num, prime):
 
@@ -22,15 +17,9 @@ class FieldElement:
 
         self.prime = prime
 
-
-
-
     def __repr__(self):
 
         return 'FieldElement_{}({})'.format(self.prime, self.num)
-
-
-
 
     def __eq__(self, other):
 
@@ -40,17 +29,11 @@ class FieldElement:
 
         return self.num == other.num and self.prime == other.prime  # <3>
 
-
-
-
     def __ne__(self, other):
 
         # this should be the inverse of the == operator
 
         return not (self == other)
-
-
-
 
     def __add__(self, other):
 
@@ -61,8 +44,6 @@ class FieldElement:
         num = (self.num + other.num) % self.prime  # <2>
 
         return self.__class__(num, self.prime)  # <3>
-
-
 
 
     def __sub__(self, other):
@@ -83,9 +64,6 @@ class FieldElement:
 
         return self.__class__(num, self.prime)
 
-
-
-
     def __mul__(self, other):
 
         if self.prime != other.prime:
@@ -104,9 +82,6 @@ class FieldElement:
 
         return self.__class__(num, self.prime)
 
-
-
-
     def __pow__(self, exponent):
 
         n = exponent % (self.prime - 1)  # <1>
@@ -114,9 +89,6 @@ class FieldElement:
         num = pow(self.num, n, self.prime)
 
         return self.__class__(num, self.prime)
-
-
-
 
     def __truediv__(self, other):
 
@@ -139,18 +111,7 @@ class FieldElement:
         return self.__class__(num, self.prime)
 
 
-
-
-
-
-
-
-
-
 class FieldElementTest(TestCase):
-
-
-
 
     def test_ne(self):
 
@@ -166,9 +127,6 @@ class FieldElementTest(TestCase):
 
         self.assertFalse(a != b)
 
-
-
-
     def test_add(self):
 
         a = FieldElement(2, 31)
@@ -182,9 +140,6 @@ class FieldElementTest(TestCase):
         b = FieldElement(21, 31)
 
         self.assertEqual(a + b, FieldElement(7, 31))
-
-
-
 
     def test_sub(self):
 
@@ -200,9 +155,6 @@ class FieldElementTest(TestCase):
 
         self.assertEqual(a - b, FieldElement(16, 31))
 
-
-
-
     def test_mul(self):
 
         a = FieldElement(24, 31)
@@ -210,9 +162,6 @@ class FieldElementTest(TestCase):
         b = FieldElement(19, 31)
 
         self.assertEqual(a * b, FieldElement(22, 31))
-
-
-
 
     def test_pow(self):
 
@@ -225,9 +174,6 @@ class FieldElementTest(TestCase):
         b = FieldElement(18, 31)
 
         self.assertEqual(a**5 * b, FieldElement(16, 31))
-
-
-
 
     def test_div(self):
 
