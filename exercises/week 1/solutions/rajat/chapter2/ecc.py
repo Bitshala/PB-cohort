@@ -20,24 +20,34 @@ class FieldElement:
         return self.num == other.num and self.prime == other.prime
 
     def __ne__(self, other):
+        # this should be the inverse of the == operator
         return not (self == other)
 
     def __add__(self, other):
         if self.prime != other.prime:
             raise TypeError('Cannot add two numbers in different Fields')
+        # self.num and other.num are the actual values
+        # self.prime is what we need to mod against
         num = (self.num + other.num) % self.prime
+        # We return an element of the same class
         return self.__class__(num, self.prime)
 
     def __sub__(self, other):
         if self.prime != other.prime:
             raise TypeError('Cannot subtract two numbers in different Fields')
+        # self.num and other.num are the actual values
+        # self.prime is what we need to mod against
         num = (self.num - other.num) % self.prime
+        # We return an element of the same class
         return self.__class__(num, self.prime)
 
     def __mul__(self, other):
         if self.prime != other.prime:
             raise TypeError('Cannot multiply two numbers in different Fields')
+        # self.num and other.num are the actual values
+        # self.prime is what we need to mod against
         num = (self.num * other.num) % self.prime
+        # We return an element of the same class
         return self.__class__(num, self.prime)
 
     def __pow__(self, exponent):
@@ -48,8 +58,14 @@ class FieldElement:
     def __truediv__(self, other):
         if self.prime != other.prime:
             raise TypeError('Cannot divide two numbers in different Fields')
-
+        # self.num and other.num are the actual values
+        # self.prime is what we need to mod against
+        # use fermat's little theorem:
+        # self.num**(p-1) % p == 1
+        # this means:
+        # 1/n == pow(n, p-2, p)
         num = (self.num * pow(other.num, self.prime - 2, self.prime)) % self.prime
+        # We return an element of the same class
         return self.__class__(num, self.prime)
 
 
@@ -110,20 +126,23 @@ class Point:
         self.b = b
         self.x = x
         self.y = y
+        # end::source1[]
+        # tag::source2[]
         if self.x is None and self.y is None:  # <1>
             return
+        # end::source2[]
+        # tag::source1[]
         if self.y**2 != self.x**3 + a * x + b:  # <1>
-            raise ValueError('({}, {}) aint on the curve'.format(x, y))
+            raise ValueError('({}, {}) is not on the curve'.format(x, y))
 
     def __eq__(self, other):  # <2>
-        if self.x is None and other.x is None:
-            return True
         return self.x == other.x and self.y == other.y \
             and self.a == other.a and self.b == other.b
     # end::source1[]
 
     def __ne__(self, other):
-        return not self == other
+        # this should be the inverse of the == operator
+        return not (self == other)
 
     def __repr__(self):
         if self.x is None:
@@ -134,7 +153,7 @@ class Point:
     # tag::source3[]
     def __add__(self, other):  # <2>
         if self.a != other.a or self.b != other.b:
-            raise TypeError('Points {}, {} aint on same curve'.format
+            raise TypeError('Points {}, {} are not on the same curve'.format
             (self, other))
 
         if self.x is None:  # <3>
@@ -143,23 +162,34 @@ class Point:
             return self
         # end::source3[]
 
-        if self.x == other.x and self.y != other.y:
-           return self.__class__(None, None, self.a, self.b)
+        # Case 1: self.x == other.x, self.y != other.y
+        # Result is point at infinity
+        if self.x == other.x and self.y!=other.y:
+            return self.__class__(None,None,self.a,self.b)
 
+        # Case 2: self.x ≠ other.x
+        # Formula (x3,y3)==(x1,y1)+(x2,y2)
+        # s=(y2-y1)/(x2-x1)
+        # x3=s**2-x1-x2
+        # y3=s*(x1-x3)-y1
         if self.x != other.x:
-            s = (other.y - self.y)/(other.x - self.x)
-            x = s**2 - self.x - other.x
-            y = s*(self.x - x) - self.y
-            return self.__class__(x, y, self.a, self.b)
+            slope = (other.y - self.y)/(other.x-self.x)
+            x = slope*slope - self.x -other.x
+            y = slope*(self.x-x)-self.y
+            return self.__class__(x,y,self.a,self.b)
 
+        # Case 3: self == other
+        # Formula (x3,y3)=(x1,y1)+(x1,y1)
+        # s=(3*x1**2+a)/(2*y1)
+        # x3=s**2-2*x1
+        # y3=s*(x1-x3)-y1
         if self == other:
-            s = (3*self.x**2 + self.a)/(2*self.y)
-            x = s**2 -2*self.x
-            y = s*(self.x - x) - self.y
-            return self.__class__(x, y, self.a, self.b)
-            
+            s = (3*self.x*self.x + self.a)/(2*self.y)
+            x = s*s -2*self.x
+            y = s*(self.x-x)-self.y
+            return self.__class__(x,y,self.a,self.b)
 
-        
+        raise NotImplementedError
 
 
 class PointTest(TestCase):
