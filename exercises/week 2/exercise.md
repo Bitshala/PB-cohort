@@ -9,4 +9,4 @@ Chapter 3 exercise is provided [here](https://github.com/jimmysong/programmingbi
 - Commit all files from that folder. Don't rename files.
 - Name the parent folder by your discord username, and sub-folders as `code-ch03`.
 - You final directory structure should look like `exercises/week 2/solutions/satoshi/code-ch03/<your files>`.
-- Make your PR by EOD Sunday of Week 1.
+- Make your PR by EOD Sunday of this week.
