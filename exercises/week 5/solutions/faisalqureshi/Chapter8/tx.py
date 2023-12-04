@@ -357,7 +357,7 @@ class TxOut:
 
 
 class TxTest(TestCase):
-    cache_file = '/Users/faisalqureshi/PB-cohort/exercises/week 5/solutions/faisalqureshi/Chapter8/tx.cache'
+    cache_file = './tx.cache'
 
     @classmethod
     def setUpClass(cls):
