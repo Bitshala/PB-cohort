@@ -30,7 +30,7 @@ class Block:
         # prev_block - 32 bytes, little endian (use [::-1] to reverse)
         prev_block = s.read(32)[::-1]
         # merkle_root - 32 bytes, little endian (use [::-1] to reverse)
-        merkle_root = s.read(32)[::-1]
+        merkle = s.read(32)[::-1]
         # timestamp - 4 bytes, little endian, interpret as int
         timestamp = little_endian_to_int(s.read(4))
         # bits - 4 bytes
@@ -38,55 +38,51 @@ class Block:
         # nonce - 4 bytes
         nonce = s.read(4)
         # initialize class
-        # raise NotImplementedError
-        return cls(version,prev_block,merkle_root,timestamp,bits,nonce)
+        return cls(version, prev_block, merkle, timestamp, bits, nonce)
 
     def serialize(self):
         '''Returns the 80 byte block header'''
         # version - 4 bytes, little endian
-        result = int_to_little_endian(self.version,4)
+        s = int_to_little_endian(self.version, 4)
         # prev_block - 32 bytes, little endian
-        result += self.prev_block[::-1]
+        s += self.prev_block[::-1]
         # merkle_root - 32 bytes, little endian
-        result += self.merkle_root[::-1]
+        s += self.merkle_root[::-1]
         # timestamp - 4 bytes, little endian
-        result += int_to_little_endian(self.timestamp,4)
+        s += int_to_little_endian(self.timestamp, 4)
         # bits - 4 bytes
-        result += self.bits
+        s += self.bits
         # nonce - 4 bytes
-        result += self.nonce
-        return result
+        s += self.nonce
+        return s
 
     def hash(self):
         '''Returns the hash256 interpreted little endian of the block'''
         # serialize
-        result = self.serialize()
+        serialize = self.serialize()
         # hash256
-        result = hash256(result)
+        hashed = hash256(serialize)
         # reverse
-        return result[::-1]
-
+        return hashed[::-1]
 
     def bip9(self):
         '''Returns whether this block is signaling readiness for BIP9'''
         # BIP9 is signalled if the top 3 bits are 001
         # remember version is 32 bytes so right shift 29 (>> 29) and see if
         # that is 001
-        # raise NotImplementedError
-        return self.version>>29 == 0b001
+        return self.version >> 29 == 0b001
 
     def bip91(self):
         '''Returns whether this block is signaling readiness for BIP91'''
         # BIP91 is signalled if the 5th bit from the right is 1
         # shift 4 bits to the right and see if the last bit is 1
-        return self.version>>4 & 1 == 1
+        return self.version >> 4 & 1 == 1
 
     def bip141(self):
         '''Returns whether this block is signaling readiness for BIP141'''
         # BIP91 is signalled if the 2nd bit from the right is 1
         # shift 1 bit to the right and see if the last bit is 1
-        # raise NotImplementedError
-        return self.version>>1 & 1 == 1
+        return self.version >> 1 & 1 == 1
 
     def target(self):
         '''Returns the proof-of-work target based on the bits'''
@@ -96,14 +92,17 @@ class Block:
         '''Returns the block difficulty based on the bits'''
         # note difficulty is (target of lowest difficulty) / (self's target)
         # lowest difficulty has bits that equal 0xffff001d
-        return (0xffff * 256**(0x1d -3)) / self.target()
+        lowest = 0xffff * 256**(0x1d - 3)
+        return lowest / self.target()
 
     def check_pow(self):
         '''Returns whether this block satisfies proof of work'''
         # get the hash256 of the serialization of this block
         # interpret this hash as a little-endian number
         # return whether this integer is less than the target
-        return little_endian_to_int(hash256(self.serialize())) < self.target()
+        hash = hash256(self.serialize())
+        proof = little_endian_to_int(hash)
+        return proof < self.target()
 
 
 class BlockTest(TestCase):
@@ -167,21 +166,21 @@ class BlockTest(TestCase):
         block_raw = bytes.fromhex('020000208ec39428b17323fa0ddec8e887b4a7c53b8c0a0a220cfd0000000000000000005b0750fce0a889502d40508d39576821155e9c9e3f5c3157f961db38fd8b25be1e77a759e93c0118a4ffd71d')
         stream = BytesIO(block_raw)
         block = Block.parse(stream)
-        # self.assertEqual(block.target(), 0x13ce9000000000000000000000000000000000000000000)
-        # self.assertEqual(int(block.difficulty()), 888171856257)
+        self.assertEqual(block.target(), 0x13ce9000000000000000000000000000000000000000000)
+        self.assertEqual(int(block.difficulty()), 888171856257)
 
     def test_difficulty(self):
         block_raw = bytes.fromhex('020000208ec39428b17323fa0ddec8e887b4a7c53b8c0a0a220cfd0000000000000000005b0750fce0a889502d40508d39576821155e9c9e3f5c3157f961db38fd8b25be1e77a759e93c0118a4ffd71d')
         stream = BytesIO(block_raw)
         block = Block.parse(stream)
-        # self.assertEqual(int(block.difficulty()), 888171856257)
+        self.assertEqual(int(block.difficulty()), 888171856257)
 
     def test_check_pow(self):
         block_raw = bytes.fromhex('04000000fbedbbf0cfdaf278c094f187f2eb987c86a199da22bbb20400000000000000007b7697b29129648fa08b4bcd13c9d5e60abb973a1efac9c8d573c71c807c56c3d6213557faa80518c3737ec1')
         stream = BytesIO(block_raw)
         block = Block.parse(stream)
-        # self.assertTrue(block.check_pow())
+        self.assertTrue(block.check_pow())
         block_raw = bytes.fromhex('04000000fbedbbf0cfdaf278c094f187f2eb987c86a199da22bbb20400000000000000007b7697b29129648fa08b4bcd13c9d5e60abb973a1efac9c8d573c71c807c56c3d6213557faa80518c3737ec0')
         stream = BytesIO(block_raw)
         block = Block.parse(stream)
-        # self.assertFalse(block.check_pow())
+        self.assertFalse(block.check_pow())

@@ -29,7 +29,7 @@ class TxFetcher:
     @classmethod
     def fetch(cls, tx_id, testnet=False, fresh=False):
         if fresh or (tx_id not in cls.cache):
-            url = '{}/tx/{}/hex'.format(cls.get_url(testnet), tx_id)
+            url = '{}/tx/{}.hex'.format(cls.get_url(testnet), tx_id)
             response = requests.get(url)
             try:
                 raw = bytes.fromhex(response.text.strip())
@@ -172,9 +172,9 @@ class Tx:
             # if the input index is the one we're signing
             if i == input_index:
                 # if the RedeemScript was passed in, that's the ScriptSig
+                # otherwise the previous tx's ScriptPubkey is the ScriptSig
                 if redeem_script:
                     script_sig = redeem_script
-                # otherwise the previous tx's ScriptPubkey is the ScriptSig
                 else:
                     script_sig = tx_in.script_pubkey(self.testnet)
             # Otherwise, the ScriptSig is empty
@@ -211,14 +211,14 @@ class Tx:
         # Script.is_p2sh_script_pubkey()
         if script_pubkey.is_p2sh_script_pubkey():
             # the last cmd in a p2sh is the RedeemScript
-            cmd = tx_in.script_sig.cmds[-1]
             # prepend the length of the RedeemScript using encode_varint
+            cmd = tx_in.script_sig.cmds[-1]
             raw_redeem = encode_varint(len(cmd)) + cmd
             # parse the RedeemScript
             redeem_script = Script.parse(BytesIO(raw_redeem))
         # otherwise RedeemScript is None
         else:
-            redeem_script = None
+            redeem_script = None                  
         # get the signature hash (z)
         # pass the RedeemScript to the sig_hash method
         z = self.sig_hash(input_index, redeem_script)
@@ -254,33 +254,6 @@ class Tx:
         self.tx_ins[input_index].script_sig = script_sig
         # return whether sig is valid using self.verify_input
         return self.verify_input(input_index)
-
-    def is_coinbase(self):
-        '''Returns whether this transaction is a coinbase transaction or not'''
-        # check that there is exactly 1 input
-        if len(self.tx_ins) != 1:
-            return False
-        # grab the first input
-        # check that first input prev_tx is b'\x00' * 32 bytes
-        if self.tx_ins[0].prev_tx != b'\x00'*32:
-               return False
-        # check that first input prev_index is 0xffffffff
-        if self.tx_ins[0].prev_index != 0xffffffff :
-            return False
-        # raise NotImplementedError
-        return True
-
-    def coinbase_height(self):
-        '''Returns the height of the block this coinbase transaction is in
-        Returns None if this transaction is not a coinbase transaction
-        '''
-        # if this is NOT a coinbase transaction, return None
-        # grab the first cmd
-        # convert the cmd from little endian to int
-        # raise NotImplementedError
-        if not self.is_coinbase():
-            return None
-        return  little_endian_to_int(self.tx_ins[0].script_sig.cmds[0])
 
 
 class TxIn:
@@ -383,7 +356,7 @@ class TxOut:
 
 
 class TxTest(TestCase):
-    cache_file = './tx.cache'
+    cache_file = '../tx.cache'
 
     @classmethod
     def setUpClass(cls):
@@ -480,19 +453,3 @@ class TxTest(TestCase):
         self.assertTrue(tx_obj.sign_input(0, private_key))
         want = '010000000199a24308080ab26e6fb65c4eccfadf76749bb5bfa8cb08f291320b3c21e56f0d0d0000006b4830450221008ed46aa2cf12d6d81065bfabe903670165b538f65ee9a3385e6327d80c66d3b502203124f804410527497329ec4715e18558082d489b218677bd029e7fa306a72236012103935581e52c354cd2f484fe8ed83af7a3097005b2f9c60bff71d35bd795f54b67ffffffff02408af701000000001976a914d52ad7ca9b3d096a38e752c2018e6fbc40cdf26f88ac80969800000000001976a914507b27411ccf7f16f10297de6cef3f291623eddf88ac00000000'
         self.assertEqual(tx_obj.serialize().hex(), want)
-
-    def test_is_coinbase(self):
-        raw_tx = bytes.fromhex('01000000010000000000000000000000000000000000000000000000000000000000000000ffffffff5e03d71b07254d696e656420627920416e74506f6f6c20626a31312f4542312f4144362f43205914293101fabe6d6d678e2c8c34afc36896e7d9402824ed38e856676ee94bfdb0c6c4bcd8b2e5666a0400000000000000c7270000a5e00e00ffffffff01faf20b58000000001976a914338c84849423992471bffb1a54a8d9b1d69dc28a88ac00000000')
-        stream = BytesIO(raw_tx)
-        tx = Tx.parse(stream)
-        self.assertTrue(tx.is_coinbase())
-
-    def test_coinbase_height(self):
-        raw_tx = bytes.fromhex('01000000010000000000000000000000000000000000000000000000000000000000000000ffffffff5e03d71b07254d696e656420627920416e74506f6f6c20626a31312f4542312f4144362f43205914293101fabe6d6d678e2c8c34afc36896e7d9402824ed38e856676ee94bfdb0c6c4bcd8b2e5666a0400000000000000c7270000a5e00e00ffffffff01faf20b58000000001976a914338c84849423992471bffb1a54a8d9b1d69dc28a88ac00000000')
-        stream = BytesIO(raw_tx)
-        tx = Tx.parse(stream)
-        self.assertEqual(tx.coinbase_height(), 465879)
-        raw_tx = bytes.fromhex('0100000001813f79011acb80925dfe69b3def355fe914bd1d96a3f5f71bf8303c6a989c7d1000000006b483045022100ed81ff192e75a3fd2304004dcadb746fa5e24c5031ccfcf21320b0277457c98f02207a986d955c6e0cb35d446a89d3f56100f4d7f67801c31967743a9c8e10615bed01210349fc4e631e3624a545de3f89f5d8684c7b8138bd94bdd531d2e213bf016b278afeffffff02a135ef01000000001976a914bc3b654dca7e56b04dca18f2566cdaf02e8d9ada88ac99c39800000000001976a9141c4bc762dd5423e332166702cb75f40df79fea1288ac19430600')
-        stream = BytesIO(raw_tx)
-        tx = Tx.parse(stream)
-        self.assertIsNone(tx.coinbase_height())

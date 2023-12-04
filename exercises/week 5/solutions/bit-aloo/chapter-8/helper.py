@@ -105,15 +105,25 @@ def encode_varint(i):
 def h160_to_p2pkh_address(h160, testnet=False):
     '''Takes a byte sequence hash160 and returns a p2pkh address string'''
     # p2pkh has a prefix of b'\x00' for mainnet, b'\x6f' for testnet
+    if testnet:
+        prefix = b'\x6f'
+    else:
+        prefix = b'\x00'
     # use encode_base58_checksum to get the address
-    raise NotImplementedError
+    return encode_base58_checksum(prefix + h160)
 
 
 def h160_to_p2sh_address(h160, testnet=False):
     '''Takes a byte sequence hash160 and returns a p2sh address string'''
     # p2sh has a prefix of b'\x05' for mainnet, b'\xc4' for testnet
     # use encode_base58_checksum to get the address
-    raise NotImplementedError
+    if testnet:
+        prefix = b'\xc4'
+    else:
+        prefix = b'\x05'
+    # use encode_base58_checksum to get the address
+    return encode_base58_checksum(prefix + h160)
+
 
 
 class HelperTest(TestCase):

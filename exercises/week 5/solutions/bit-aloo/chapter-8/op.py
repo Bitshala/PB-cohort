@@ -708,15 +708,31 @@ def op_checkmultisig(stack, z):
     try:
         # end::source1[]
         # parse all the points
+        points = []
+        for sec in sec_pubkeys:
+            point = S256Point.parse(sec)
+            points.append(point)
         # parse all the signatures
         # loop through the signatures
+        signatures = []
+        for der in der_signatures:
+            sig = Signature.parse(der)
+            signatures.append(sig)
             # if we have no more points, signatures are no good
             # we loop until we find the point which works with this signature
+        for sig in signatures:
+            if len(points) == 0:
+                return False
+            while points:
                 # get the current point from the list of points
-                # we check if this signature goes with the current point
+                # we check if this signature goes with the current point        
+                 point = points.pop(0)
+                 if point.verify(z, sig):
+                     break
         # the signatures are valid, so push a 1 to the stack
         # tag::source1[]
-        raise NotImplementedError  # <3>
+        stack.append(encode_num(1))
+        
     except (ValueError, SyntaxError):
         return False
     return True
