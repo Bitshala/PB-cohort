@@ -185,27 +185,44 @@ class MerkleBlock:
     def parse(cls, s):
         '''Takes a byte stream and parses a merkle block. Returns a Merkle Block object'''
         # version - 4 bytes, Little-Endian integer
+        version = little_endian_to_int(s.read(4))
         # prev_block - 32 bytes, Little-Endian (use [::-1])
+        prev_block = s.read(32)[::-1]
         # merkle_root - 32 bytes, Little-Endian (use [::-1])
+        merkle_root = s.read(32)[::-1]
         # timestamp - 4 bytes, Little-Endian integer
+        timestamp = little_endian_to_int(s.read(4))
         # bits - 4 bytes
+        bits = s.read(4)
         # nonce - 4 bytes
+        nonce = s.read(4)
         # total transactions in block - 4 bytes, Little-Endian integer
+        total = little_endian_to_int(s.read(4))
         # number of transaction hashes - varint
+        num_hashes = read_varint(s)
+        hashes = []
         # each transaction is 32 bytes, Little-Endian
+        for _ in range(num_hashes):
+            hashes.append(s.read(32)[::-1])
         # length of flags field - varint
+        flags_length = read_varint(s)
         # read the flags field
+        flags = s.read(flags_length)
         # initialize class
-        raise NotImplementedError
+        return cls(version,prev_block,merkle_root,timestamp,bits,nonce,total,hashes,flags)
 
     def is_valid(self):
         '''Verifies whether the merkle tree information validates to the merkle root'''
         # convert the flags field to a bit field
+        flag_bits = bytes_to_bit_field(self.flags)
         # reverse self.hashes for the merkle root calculation
+        hashes = [h[::-1] for h in self.hashes]
         # initialize the merkle tree
+        merkle_tree = MerkleTree(self.total)
         # populate the tree with flag bits and hashes
+        merkle_tree.populate_tree(flag_bits,hashes)
         # check if the computed root reversed is the same as the merkle root
-        raise NotImplementedError
+        return merkle_tree.root()[::-1] == self.merkle_root
 
 
 class MerkleBlockTest(TestCase):
