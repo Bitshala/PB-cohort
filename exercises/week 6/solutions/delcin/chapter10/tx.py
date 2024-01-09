@@ -29,7 +29,7 @@ class TxFetcher:
     @classmethod
     def fetch(cls, tx_id, testnet=False, fresh=False):
         if fresh or (tx_id not in cls.cache):
-            url = '{}/tx/{}/hex'.format(cls.get_url(testnet), tx_id)
+            url = '{}/tx/{}.hex'.format(cls.get_url(testnet), tx_id)
             response = requests.get(url)
             try:
                 raw = bytes.fromhex(response.text.strip())
@@ -146,97 +146,141 @@ class Tx:
         result += int_to_little_endian(self.locktime, 4)
         return result
 
-    # tag::source1[]
     def fee(self):
         '''Returns the fee of this transaction in satoshi'''
+        # initialize input sum and output sum
         input_sum, output_sum = 0, 0
+        # use TxIn.value() to sum up the input amounts
         for tx_in in self.tx_ins:
             input_sum += tx_in.value(self.testnet)
+        # use TxOut.amount to sum up the output amounts
         for tx_out in self.tx_outs:
             output_sum += tx_out.amount
+        # fee is input sum - output sum
         return input_sum - output_sum
-    # end::source1[]
 
-    def sig_hash(self, input_index):
+    def sig_hash(self, input_index, redeem_script=None):
         '''Returns the integer representation of the hash that needs to get
         signed for index input_index'''
         # start the serialization with version
         # use int_to_little_endian in 4 bytes
+        s = int_to_little_endian(self.version, 4)
         # add how many inputs there are using encode_varint
+        s += encode_varint(len(self.tx_ins))
         # loop through each input using enumerate, so we have the input index
-            # if the input index is the one we're signing
-            # the previous tx's ScriptPubkey is the ScriptSig
-            # Otherwise, the ScriptSig is empty
-            # add the serialization of the input with the ScriptSig we want
-        # add how many outputs there are using encode_varint
-        # add the serialization of each output
-        # add the locktime using int_to_little_endian in 4 bytes
-        # add SIGHASH_ALL using int_to_little_endian in 4 bytes
-        # hash256 the serialization
-        # convert the result to an integer using int.from_bytes(x, 'big')
-        res = int_to_little_endian(self.version, 4)
-        res += encode_varint(len(self.tx_ins))
         for i, tx_in in enumerate(self.tx_ins):
+            # if the input index is the one we're signing
             if i == input_index:
-                res += TxIn(
-                    prev_tx=tx_in.prev_tx,
-                    prev_index=tx_in.prev_index,
-                    script_sig=tx_in.script_pubkey(self.testnet),
-                    sequence=tx_in.sequence,
-                ).serialize()
+                # if the RedeemScript was passed in, that's the ScriptSig
+                if redeem_script:
+                    script_sig = redeem_script
+                # otherwise the previous tx's ScriptPubkey is the ScriptSig
+                else:
+                    script_sig = tx_in.script_pubkey(self.testnet)
+            # Otherwise, the ScriptSig is empty
             else:
-                res += TxIn(
-                    prev_tx=tx_in.prev_tx,
-                    prev_index=tx_in.prev_index,
-                    sequence=tx_in.sequence,
-                ).serialize()
-        res += encode_varint(len(self.tx_outs))
+                script_sig = None
+            # add the serialization of the input with the ScriptSig we want
+            s += TxIn(
+                prev_tx=tx_in.prev_tx,
+                prev_index=tx_in.prev_index,
+                script_sig=script_sig,
+                sequence=tx_in.sequence,
+            ).serialize()
+        # add how many outputs there are using encode_varint
+        s += encode_varint(len(self.tx_outs))
+        # add the serialization of each output
         for tx_out in self.tx_outs:
-            res += tx_out.serialize()
-        res += int_to_little_endian(self.locktime, 4)
-        res += int_to_little_endian(SIGHASH_ALL, 4)
-        h256 = hash256(res)
+            s += tx_out.serialize()
+        # add the locktime using int_to_little_endian in 4 bytes
+        s += int_to_little_endian(self.locktime, 4)
+        # add SIGHASH_ALL using int_to_little_endian in 4 bytes
+        s += int_to_little_endian(SIGHASH_ALL, 4)
+        # hash256 the serialization
+        h256 = hash256(s)
+        # convert the result to an integer using int.from_bytes(x, 'big')
         return int.from_bytes(h256, 'big')
 
     def verify_input(self, input_index):
         '''Returns whether the input has a valid signature'''
         # get the relevant input
-        # grab the previous ScriptPubKey
-        # get the signature hash (z)
-        # combine the current ScriptSig and the previous ScriptPubKey
-        # evaluate the combined script
         tx_in = self.tx_ins[input_index]
-        script_pub = tx_in.script_pubkey(testnet=self.testnet)
-        z = self.sig_hash(input_index)
-        combined = tx_in.script_sig + script_pub
+        # grab the previous ScriptPubKey
+        script_pubkey = tx_in.script_pubkey(testnet=self.testnet)
+        # check to see if the ScriptPubkey is a p2sh using
+        # Script.is_p2sh_script_pubkey()
+        if script_pubkey.is_p2sh_script_pubkey():
+            # the last cmd in a p2sh is the RedeemScript
+            cmd = tx_in.script_sig.cmds[-1]
+            # prepend the length of the RedeemScript using encode_varint
+            raw_redeem = encode_varint(len(cmd)) + cmd
+            # parse the RedeemScript
+            redeem_script = Script.parse(BytesIO(raw_redeem))
+        # otherwise RedeemScript is None
+        else:
+            redeem_script = None
+        # get the signature hash (z)
+        # pass the RedeemScript to the sig_hash method
+        z = self.sig_hash(input_index, redeem_script)
+        # combine the current ScriptSig and the previous ScriptPubKey
+        combined = tx_in.script_sig + script_pubkey
+        # evaluate the combined script
         return combined.evaluate(z)
 
-    # tag::source2[]
     def verify(self):
         '''Verify this transaction'''
-        if self.fee() < 0:  # <1>
+        # check that we're not creating money
+        if self.fee() < 0:
             return False
+        # check that each input has a valid ScriptSig
         for i in range(len(self.tx_ins)):
-            if not self.verify_input(i):  # <2>
+            if not self.verify_input(i):
                 return False
         return True
-    # end::source2[]
 
     def sign_input(self, input_index, private_key):
+        '''Signs the input using the private key'''
         # get the signature hash (z)
+        z = self.sig_hash(input_index)
         # get der signature of z from private key
+        der = private_key.sign(z).der()
         # append the SIGHASH_ALL to der (use SIGHASH_ALL.to_bytes(1, 'big'))
+        sig = der + SIGHASH_ALL.to_bytes(1, 'big')
         # calculate the sec
+        sec = private_key.point.sec()
         # initialize a new script with [sig, sec] as the cmds
+        script_sig = Script([sig, sec])
         # change input's script_sig to new script
+        self.tx_ins[input_index].script_sig = script_sig
         # return whether sig is valid using self.verify_input
-        z = self.sig_hash(input_index=input_index)
-        der = private_key.sign(z).der() # signature of input
-        der += SIGHASH_ALL.to_bytes(1, 'big')
-        sec = private_key.point.sec() # pub key serialization
-        script = Script([der, sec])
-        self.tx_ins[input_index].script_sig = script
-        return self.verify_input(input_index=input_index)
+        return self.verify_input(input_index)
+
+    def is_coinbase(self):
+        '''Returns whether this transaction is a coinbase transaction or not'''
+        # check that there is exactly 1 input
+        if len(self.tx_ins) != 1:
+            return False
+        # grab the first input
+        first_input = self.tx_ins[0]
+        # check that first input prev_tx is b'\x00' * 32 bytes
+        if first_input.prev_tx != b'\x00' * 32:
+            return False
+        # check that first input prev_index is 0xffffffff
+        if first_input.prev_index != 0xffffffff:
+            return False
+        return True
+
+    def coinbase_height(self):
+        '''Returns the height of the block this coinbase transaction is in
+        Returns None if this transaction is not a coinbase transaction
+        '''
+        # if this is NOT a coinbase transaction, return None
+        if not self.is_coinbase():
+            return None
+        # grab the first cmd
+        first_cmd = self.tx_ins[0].script_sig.cmds[0]
+        # convert the cmd from little endian to int
+        return little_endian_to_int(first_cmd)
 
 
 class TxIn:
@@ -436,3 +480,19 @@ class TxTest(TestCase):
         self.assertTrue(tx_obj.sign_input(0, private_key))
         want = '010000000199a24308080ab26e6fb65c4eccfadf76749bb5bfa8cb08f291320b3c21e56f0d0d0000006b4830450221008ed46aa2cf12d6d81065bfabe903670165b538f65ee9a3385e6327d80c66d3b502203124f804410527497329ec4715e18558082d489b218677bd029e7fa306a72236012103935581e52c354cd2f484fe8ed83af7a3097005b2f9c60bff71d35bd795f54b67ffffffff02408af701000000001976a914d52ad7ca9b3d096a38e752c2018e6fbc40cdf26f88ac80969800000000001976a914507b27411ccf7f16f10297de6cef3f291623eddf88ac00000000'
         self.assertEqual(tx_obj.serialize().hex(), want)
+
+    def test_is_coinbase(self):
+        raw_tx = bytes.fromhex('01000000010000000000000000000000000000000000000000000000000000000000000000ffffffff5e03d71b07254d696e656420627920416e74506f6f6c20626a31312f4542312f4144362f43205914293101fabe6d6d678e2c8c34afc36896e7d9402824ed38e856676ee94bfdb0c6c4bcd8b2e5666a0400000000000000c7270000a5e00e00ffffffff01faf20b58000000001976a914338c84849423992471bffb1a54a8d9b1d69dc28a88ac00000000')
+        stream = BytesIO(raw_tx)
+        tx = Tx.parse(stream)
+        self.assertTrue(tx.is_coinbase())
+
+    def test_coinbase_height(self):
+        raw_tx = bytes.fromhex('01000000010000000000000000000000000000000000000000000000000000000000000000ffffffff5e03d71b07254d696e656420627920416e74506f6f6c20626a31312f4542312f4144362f43205914293101fabe6d6d678e2c8c34afc36896e7d9402824ed38e856676ee94bfdb0c6c4bcd8b2e5666a0400000000000000c7270000a5e00e00ffffffff01faf20b58000000001976a914338c84849423992471bffb1a54a8d9b1d69dc28a88ac00000000')
+        stream = BytesIO(raw_tx)
+        tx = Tx.parse(stream)
+        self.assertEqual(tx.coinbase_height(), 465879)
+        raw_tx = bytes.fromhex('0100000001813f79011acb80925dfe69b3def355fe914bd1d96a3f5f71bf8303c6a989c7d1000000006b483045022100ed81ff192e75a3fd2304004dcadb746fa5e24c5031ccfcf21320b0277457c98f02207a986d955c6e0cb35d446a89d3f56100f4d7f67801c31967743a9c8e10615bed01210349fc4e631e3624a545de3f89f5d8684c7b8138bd94bdd531d2e213bf016b278afeffffff02a135ef01000000001976a914bc3b654dca7e56b04dca18f2566cdaf02e8d9ada88ac99c39800000000001976a9141c4bc762dd5423e332166702cb75f40df79fea1288ac19430600')
+        stream = BytesIO(raw_tx)
+        tx = Tx.parse(stream)
+        self.assertIsNone(tx.coinbase_height())
